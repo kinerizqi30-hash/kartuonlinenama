@@ -373,39 +373,40 @@
 
         // 3. Simpan / Update Data ke Google Sheets
         async function saveProfileToSheets(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save');
-            btn.textContent = "Menyimpan ke Sheets...";
+    e.preventDefault();
+    const btn = document.getElementById('btn-save');
+    btn.textContent = "Menyimpan ke Sheets...";
 
-            const payload = {
-                id: currentId,
-                name: document.getElementById('input-name').value,
-                title: document.getElementById('input-title').value,
-                company: document.getElementById('input-company').value,
-                phone: document.getElementById('input-phone').value,
-                email: document.getElementById('input-email').value,
-                bio: document.getElementById('input-bio').value,
-                avatar: document.getElementById('input-avatar').value
-            };
+    const payload = {
+        id: currentId,
+        name: document.getElementById('input-name').value,
+        title: document.getElementById('input-title').value,
+        company: document.getElementById('input-company').value,
+        phone: document.getElementById('input-phone').value,
+        email: document.getElementById('input-email').value,
+        bio: document.getElementById('input-bio').value,
+        avatar: document.getElementById('input-avatar').value
+    };
 
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+    try {
+        // Menggunakan URLSearchParams agar terbaca dengan baik oleh Google Apps Script doPost(e)
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: new URLSearchParams({
+                data: JSON.stringify(payload)
+            })
+        });
 
-                showToast("Data berhasil dikirim ke Google Sheets!");
-                closeEditModal();
-                setTimeout(loadDataFromSheets, 1500); // Reload data terbaru setelah 1.5 detik
-            } catch (e) {
-                console.error(e);
-                showToast("Gagal menyimpan ke Google Sheets.");
-            } finally {
-                btn.textContent = "Simpan ke Sheets";
-            }
-        }
+        showToast("Data berhasil dikirim ke Google Sheets!");
+        closeEditModal();
+        setTimeout(loadDataFromSheets, 1500); // Reload data terbaru
+    } catch (e) {
+        console.error(e);
+        showToast("Gagal menyimpan ke Google Sheets.");
+    } finally {
+        btn.textContent = "Simpan ke Sheets";
+    }
+}
 
         // Modal Handlers & Utilities
         function openEditModal() {
