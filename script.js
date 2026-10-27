@@ -27,7 +27,11 @@ function doGet(e) {
 function doPost(e) {
   try {
     var sheet = getSheet();
-    var data = JSON.parse(e.postData.contents);
+    
+    // Menyesuaikan cara baca data yang dikirim via URLSearchParams
+    var rawData = e.parameter.data || (e.postData ? e.postData.contents : "{}");
+    var data = JSON.parse(rawData);
+    
     var rows = sheet.getDataRange().getValues();
     var targetId = data.id.toString();
     
