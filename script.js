@@ -1,61 +1,84 @@
-function getSheet() {
-  return SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-}
+var SHEET_NAME = "Sheet1"; // Sesuaikan dengan nama sheet Anda
 
-// Fungsi saat website meminta data (Load berdasarkan ID)
 function doGet(e) {
-  var sheet = getSheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  
+  var id = e.parameter.id;
+  if (!id) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "ID is required"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
   var rows = sheet.getDataRange().getValues();
-  var headers = rows[0];
-  var requestedId = e && e.parameter && e.parameter.id ? e.parameter.id : "1";
-
+  var headers = rows[0]; 
+  
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString() === requestedId.toString()) {
+    if (rows[i][0].toString() === id.toString()) {
       var obj = {};
       for (var j = 0; j < headers.length; j++) {
         obj[headers[j]] = rows[i][j];
       }
       return ContentService.createTextOutput(JSON.stringify(obj))
-        .setMimeType(ContentService.MimeType.JSON);
+                           .setMimeType(ContentService.MimeType.JSON);
     }
   }
+  
   return ContentService.createTextOutput(JSON.stringify({status: "not found"}))
-    .setMimeType(ContentService.MimeType.JSON);
+                       .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Fungsi saat website mengirim data untuk disimpan (Save/Edit ke Google Sheets)
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  
   try {
-    var sheet = getSheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME);
     
-    // Menyesuaikan cara baca data yang dikirim via URLSearchParams
-    var rawData = e.parameter.data || (e.postData ? e.postData.contents : "{}");
-    var data = JSON.parse(rawData);
+    var dataParam = e.parameter.data;
+    if (!dataParam) {
+      return ContentService.createTextOutput(JSON.stringify({status: "error", message: "No data provided"}))
+                           .setMimeType(ContentService.MimeType.JSON);
+    }
     
+    var data = JSON.parse(dataParam);
     var rows = sheet.getDataRange().getValues();
-    var targetId = data.id.toString();
+    var headers = rows[0];
     
-    // Cari baris berdasarkan ID di Kolom A, lalu update datanya
+    var rowIndex = -1;
     for (var i = 1; i < rows.length; i++) {
-      if (rows[i][0].toString() === targetId) {
-        sheet.getRange(i + 1, 2).setValue(data.name);       // Kolom B: Nama
-        sheet.getRange(i + 1, 3).setValue(data.title);      // Kolom C: Jabatan
-        sheet.getRange(i + 1, 4).setValue(data.company);    // Kolom D: Perusahaan
-        sheet.getRange(i + 1, 5).setValue(data.phone);      // Kolom E: WhatsApp / Telepon
-        sheet.getRange(i + 1, 6).setValue(data.email);      // Kolom F: Email
-        sheet.getRange(i + 1, 7).setValue(data.bio);        // Kolom G: Bio
-        sheet.getRange(i + 1, 8).setValue(data.avatar);     // Kolom H: Avatar URL
-        
-        return ContentService.createTextOutput(JSON.stringify({status: "success", message: "Data berhasil disimpan ke Google Sheets!"}))
-          .setMimeType(ContentService.MimeType.JSON);
+      if (rows[i][0].toString() === data.id.toString()) {
+        rowIndex = i + 1;
+        break;
       }
     }
     
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "ID tidak ditemukan"}))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: error.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
+    var rowData = [
+      data.id,
+      data.name || "",
+      data.title || "",
+      data.company || "",
+      data.phone || "",
+      data.email || "",
+      data.bio || "",
+      data.avatar || ""
+    ];
+    
+    if (rowIndex > -1) {
+      sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      sheet.appendRow(rowData);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+                         .setMimeType(ContentService.MimeType.JSON);
+                         
+  } catch (err) {
+    // PERBAIKAN DI SINI (menambahkan kurung tutup yang kurang)
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()}))
+                         .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
 }
